@@ -30,10 +30,20 @@ async function fetchAndParse(url) {
     return { html, url: response.url };
 }
 
-function cleanTitle(title) {
-    if (!title) return "";
-    let clean = title.replace(/\s*[–\-\|]\s*(React|Astro|Vue|Vue\.js|Documentation)\s*$/i, '');
-    return clean.trim();
+function cleanTitle(title, urlPath) {
+    if (!title) return urlPath.split('/').pop().replace(/[\-_]/g, ' ') || "Untitled";
+    
+    // List of generic titles to avoid
+    const generic = ['react', 'vue', 'vue.js', 'astro', 'documentation', 'guide', 'reference', 'introduction'];
+    let clean = title.replace(/\s*[–\-\|]\s*(React|Astro|Vue|Vue\.js|Documentation|Guide|Reference)\s*$/i, '').trim();
+    
+    if (generic.includes(clean.toLowerCase()) || clean.length < 3) {
+        // Fallback to the last part of the URL if title is too generic
+        const slug = urlPath.split('/').pop().replace(/[\-_]/g, ' ');
+        return slug.charAt(0).toUpperCase() + slug.slice(1) || clean;
+    }
+    
+    return clean;
 }
 
 async function indexSingleUrl(url, skipDomainIndex = false) {
@@ -65,7 +75,7 @@ async function indexSingleUrl(url, skipDomainIndex = false) {
 
     fs.mkdirSync(targetDir, { recursive: true });
     
-    const displayTitle = cleanTitle(article.title);
+    const displayTitle = cleanTitle(article.title, pathname);
     const content = "---\ntitle: \"" + displayTitle.replace(/"/g, '\\"') + "\"\nsource: " + url + "\nauthor: " + (article.byline || 'Unknown') + "\nexcerpt: " + (article.excerpt || '').replace(/\n/g, ' ') + "\n---\n\n# " + displayTitle + "\n\n" + markdown + "\n";
 
     fs.writeFileSync(filePath, content);
@@ -101,8 +111,9 @@ async function indexUrl(inputUrl) {
 
         while (toProcess.length > 0) {
             const current = toProcess.shift();
-            if (visited.has(current)) continue;
-            visited.add(current);
+            const normalized = current.replace(/\/$/, '');
+            if (visited.has(normalized)) continue;
+            visited.add(normalized);
 
             try {
                 const { html, url: finalUrl } = await fetchAndParse(current);
@@ -112,15 +123,13 @@ async function indexUrl(inputUrl) {
                 for (const a of links) {
                     try {
                         const u = new URL(a.href, finalUrl);
-                        u.hash = ''; // Remove anchors
+                        u.hash = ''; 
                         const href = u.href.replace(/\/$/, '');
                         const cleanBase = baseUrl.replace(/\/$/, '');
 
                         if (u.origin === new URL(baseUrl).origin && href.startsWith(cleanBase)) {
                             if (!visited.has(href)) {
-                                // If it looks like a page (not just an anchor), add to results
                                 results.add(href);
-                                // If it doesn't have an extension or is .html, we might want to explore it for more links
                                 if (!path.extname(u.pathname) || u.pathname.endsWith('.html')) {
                                     toProcess.push(href);
                                 }
@@ -164,9 +173,6 @@ function updateDomainIndex(domain) {
                 const webRelativePath = relativePath.split(path.sep).join('/').replace(/\.md$/, '');
                 
                 let title = titleMatch ? titleMatch[1].trim() : file;
-                if (title.toLowerCase() === "react" || title.toLowerCase() === "astro" || title.toLowerCase() === "vue" || title.length < 2) {
-                    title = webRelativePath.split('/').pop().replace(/[\-_]/g, ' ');
-                }
                 files.push({ title, path: webRelativePath });
             }
         });

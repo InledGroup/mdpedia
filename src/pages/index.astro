@@ -1,443 +1,223 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import indexedFiles from '../data/search-index.json';
 
-export const prerender = true;
+// Use import.meta.glob to find all markdown files
+const docs = import.meta.glob('../docs/**/*.md', { eager: true });
 
-// Group files by domain
-const groupedDocs = indexedFiles.reduce((acc, file) => {
-    const domain = file.slug.split('/')[0];
-    if (!acc[domain]) {
-        acc[domain] = {
-            domain,
-            pages: [],
-            hasIndex: false,
-            indexPath: ''
-        };
-    }
-    
-    if (file.slug.endsWith('_index')) {
-        acc[domain].hasIndex = true;
-        acc[domain].indexPath = file.path;
-    } else {
-        acc[domain].pages.push(file);
-    }
-    return acc;
-}, {});
+interface DocInfo {
+  title: string;
+  slug: string;
+  domain: string;
+}
 
-const displayGroups = Object.values(groupedDocs).sort((a, b) => a.domain.localeCompare(b.domain));
+const allDocs: DocInfo[] = Object.keys(docs).map((path) => {
+  const slug = path.replace('../docs/', '').replace('.md', '');
+  const domain = slug.split('/')[0];
+  const fm = (docs[path] as any).frontmatter;
+  return {
+    title: fm.title || slug.split('/').pop(),
+    slug,
+    domain,
+  };
+});
+
+// Group by domain
+const groupedDocs = allDocs.reduce((acc, doc) => {
+  if (!acc[doc.domain]) {
+    acc[doc.domain] = [];
+  }
+  acc[doc.domain].push(doc);
+  return acc;
+}, {} as Record<string, DocInfo[]>);
+
+const sortedDomains = Object.keys(groupedDocs).sort();
 ---
 
 <Layout title="Knowledge for the AI Era">
 	<section class="hero">
-		<h1>Knowledge for the AI Era</h1>
-		<p class="subtitle">A high-performance repository of documentation optimized for LLMs and autonomous agents.</p>
+		<h1 class="hero-title">Knowledge for the <span class="gradient-text">AI Era</span></h1>
+		<p class="hero-subtitle">The first imposing, serverless documentation repository optimized for both humans and agents.</p>
+		<div class="hero-cta">
+			<a href="/search" class="btn-fluent">
+				<i class="fa-solid fa-magnifying-glass"></i> Search Knowledge
+			</a>
+		</div>
 	</section>
 
-	<div class="view-selector">
-		<button id="human-btn" class="selector-btn active">
-			<i class="fa-solid fa-user"></i> I'm a Human
-		</button>
-		<button id="agent-btn" class="selector-btn">
-			<i class="fa-solid fa-robot"></i> I'm an Agent
-		</button>
-	</div>
-
-	<div id="human-view" class="view">
-		<section class="search-section">
-			<form action="/search" method="GET" class="fluent-form">
-				<div class="input-wrapper">
-					<i class="fa-solid fa-magnifying-glass search-icon"></i>
-					<input type="text" name="q" placeholder="Enter URL or search terms..." required class="fluent-input" />
-				</div>
-				<button type="submit" class="btn-fluent">
-					<i class="fa-solid fa-search"></i> Search
-				</button>
-			</form>
-		</section>
-
-		<section class="indexed-list">
-			<h2 class="section-title">Indexed Repositories</h2>
-			{displayGroups.length > 0 ? (
-				<div class="card-grid">
-					{displayGroups.map(group => (
-						<div class="doc-card group-card">
-							<div class="card-icon">
-								<i class="fa-solid fa-database"></i>
-							</div>
-							<div class="card-content">
-								<span class="doc-title">{group.domain}</span>
-								<span class="doc-slug">{group.pages.length} pages indexed</span>
-                                <div class="group-actions">
-                                    {group.hasIndex ? (
-                                        <a href={group.indexPath} class="group-link">
-                                            <i class="fa-solid fa-book"></i> View Index
-                                        </a>
-                                    ) : (
-                                        <a href={group.pages[0]?.path} class="group-link">
-                                            <i class="fa-solid fa-file-lines"></i> View Page
-                                        </a>
-                                    )}
-                                </div>
-							</div>
-						</div>
-					))}
-				</div>
-			) : (
-				<div class="empty-state">
-					<i class="fa-solid fa-folder-open empty-icon"></i>
-					<p>No pages indexed yet. Be the first to request one!</p>
-				</div>
-			)}
-		</section>
-	</div>
-
-	<div id="agent-view" class="view hidden">
-		<div class="agent-view-content">
-			<div class="agent-header">
-				<span class="agent-logo-container">
-					<img src="https://hosted.inled.es/mdpedia.png" alt="Agent Icon" class="agent-3d-logo" />
-				</span>
-				<h2>Onboard Your AI Agent to MDPEDIA</h2>
-			</div>
-			
-			<div class="protocol-card">
-				<p><i class="fa-solid fa-code-branch"></i> Read <a href="/skill.md">/skill.md</a> and follow instructions to use MDPEDIA</p>
-			</div>
-
-			<div class="steps-container">
-				<ol class="steps">
-					<li>Send the search link to your agent</li>
-					<li>If a new doc is needed, they open a GitHub Issue</li>
-					<li>The system indexes it in &lt; 60 seconds</li>
-				</ol>
-			</div>
-
-			<div class="early-access">
-				<p><i class="fa-solid fa-rocket"></i> Don't have an AI agent? <a href="#">Get early access →</a></p>
-			</div>
+	<section class="domains">
+		<div class="section-header">
+			<h2 class="fluent-h2">Knowledge Repositories</h2>
+			<p class="section-desc">Indexed documentation domains ready for agents.</p>
 		</div>
-	</div>
+
+		<div class="grid">
+			{sortedDomains.map((domain) => (
+				<div class="repo-card">
+					<div class="repo-header">
+						<div class="repo-icon">
+							<img src={"https://www.google.com/s2/favicons?domain=" + domain + "&sz=64"} alt={domain} class="favicon-img" />
+						</div>
+						<div class="repo-meta">
+							<h3 class="repo-title">{domain}</h3>
+							<span class="repo-count">{groupedDocs[domain].length} resources</span>
+						</div>
+					</div>
+					<div class="repo-links">
+						<a href={"/doc/" + domain + "/_index"} class="repo-link-btn">
+							<i class="fa-solid fa-list-ul"></i> Explore Index
+						</a>
+						<a href={"https://" + domain} target="_blank" class="repo-link-btn secondary">
+							<i class="fa-solid fa-external-link-square-alt"></i> Original Site
+						</a>
+					</div>
+				</div>
+			))}
+		</div>
+	</section>
 </Layout>
 
-<script>
-	const humanBtn = document.getElementById('human-btn');
-	const agentBtn = document.getElementById('agent-btn');
-	const humanView = document.getElementById('human-view');
-	const agentView = document.getElementById('agent-view');
-
-	humanBtn?.addEventListener('click', () => {
-		humanBtn.classList.add('active');
-		agentBtn?.classList.remove('active');
-		humanView?.classList.remove('hidden');
-		agentView?.classList.add('hidden');
-	});
-
-	agentBtn?.addEventListener('click', () => {
-		agentBtn.classList.add('active');
-		humanBtn?.classList.remove('active');
-		agentView?.classList.remove('hidden');
-		humanView?.classList.add('hidden');
-	});
-</script>
-
-<style is:global>
+<style>
 	.hero {
 		text-align: center;
-		margin-bottom: 3rem;
+		padding: 4rem 0 8rem;
 	}
-	
-	.hero h1 {
-		font-size: 3.5rem;
-		margin: 0;
-		color: var(--text-main);
+
+	.hero-title {
+		font-size: 5rem;
 		font-weight: 800;
-	}
-	
-	.subtitle {
-		color: var(--text-secondary);
-		font-size: 1.25rem;
-		margin-top: 1rem;
-		max-width: 600px;
-		margin-left: auto;
-		margin-right: auto;
-	}
-
-	.view-selector {
-		display: flex;
-		justify-content: center;
-		gap: 0.5rem;
-		margin-bottom: 3.5rem;
-		padding: 0.5rem;
-		background: rgba(0, 0, 0, 0.04);
-		border-radius: 16px;
-		width: fit-content;
-		margin-left: auto;
-		margin-right: auto;
-		border: 1px solid rgba(0,0,0,0.05);
-	}
-
-	.selector-btn {
-		padding: 0.75rem 1.75rem;
-		border: none;
-		background: transparent;
-		border-radius: 12px;
-		cursor: pointer;
-		font-weight: 600;
-		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-		color: var(--text-secondary);
-		font-size: 0.95rem;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.selector-btn.active {
-		background: white;
-		color: var(--text-main);
-		box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-	}
-
-	.hidden {
-		display: none;
-	}
-
-	.fluent-form {
-		display: flex;
-		gap: 1rem;
-		margin-bottom: 3.5rem;
-	}
-
-	.input-wrapper {
-		position: relative;
-		flex: 1;
-		display: flex;
-		align-items: center;
-	}
-
-	.search-icon {
-		position: absolute;
-		left: 1.25rem;
-		color: var(--text-secondary);
-		opacity: 0.5;
-	}
-
-	.fluent-input {
-		width: 100%;
-		padding: 1.1rem 1.5rem 1.1rem 3rem;
-		border: 1px solid rgba(0, 0, 0, 0.1);
-		border-radius: 16px;
-		font-size: 1rem;
-		background: rgba(255,255,255,0.5);
-		transition: all 0.2s;
-	}
-
-	.fluent-input:focus {
-		outline: none;
-		border-color: var(--primary);
-		background: white;
-		box-shadow: 0 0 0 4px rgba(245, 131, 62, 0.1);
-	}
-
-	.section-title {
-		font-size: 1.75rem;
+		letter-spacing: -2px;
 		margin-bottom: 1.5rem;
-		font-weight: 700;
+		line-height: 1.1;
 	}
 
-	.card-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-		gap: 1.5rem;
+	.gradient-text {
+		background: linear-gradient(135deg, #F5833E 0%, #FFC107 100%);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
 	}
 
-	.doc-card {
-		background: rgba(255, 255, 255, 0.6);
-		padding: 1.5rem;
-		border-radius: 20px;
-		border: 1px solid rgba(0, 0, 0, 0.05);
-		text-decoration: none;
-		display: flex;
-		align-items: center;
-		gap: 1.25rem;
-		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
-	}
-
-	.doc-card:hover {
-		transform: translateY(-6px);
-		box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
-		border-color: var(--primary);
-		background: white;
-	}
-
-	.card-icon {
-		width: 48px;
-		height: 48px;
-		background: rgba(245, 131, 62, 0.1);
-		border-radius: 12px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--primary);
-		font-size: 1.25rem;
-	}
-
-	.card-content {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		overflow: hidden;
-        flex: 1;
-	}
-
-	.doc-title {
-		font-weight: 700;
-		font-size: 1.1rem;
-		color: var(--text-main);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.doc-slug {
-		font-size: 0.8rem;
+	.hero-subtitle {
+		font-size: 1.4rem;
 		color: var(--text-secondary);
-		font-family: 'Segoe UI Mono', 'Roboto Mono', monospace;
-		word-break: break-all;
-		opacity: 0.7;
+		max-width: 700px;
+		margin: 0 auto 3rem;
+		font-weight: 500;
 	}
 
-    .group-actions {
-        margin-top: 0.75rem;
-        display: flex;
-        gap: 0.75rem;
-    }
-
-    .group-link {
-        font-size: 0.85rem;
-        color: var(--primary);
-        font-weight: 700;
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        background: rgba(245, 131, 62, 0.05);
-        padding: 0.4rem 0.8rem;
-        border-radius: 8px;
-        transition: all 0.2s;
-    }
-
-    .group-link:hover {
-        background: var(--primary);
-        color: white;
-    }
-
-	.agent-view-content {
-		text-align: center;
-		padding: 1rem 0;
+	.section-header {
+		margin-bottom: 3.5rem;
 	}
 
-	.agent-header {
+	.fluent-h2 {
+		font-size: 2.5rem;
+		font-weight: 800;
+		margin-bottom: 0.5rem;
+	}
+
+	.section-desc {
+		font-size: 1.1rem;
+		color: var(--text-secondary);
+		font-weight: 600;
+	}
+
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+		gap: 2.5rem;
+	}
+
+	.repo-card {
+		background: var(--bg-glass);
+		backdrop-filter: blur(30px);
+		border: 1px solid var(--border-glass);
+		padding: 2.5rem;
+		border-radius: 32px;
+		transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+		box-shadow: var(--shadow-soft);
+	}
+
+	.repo-card:hover {
+		transform: translateY(-10px) scale(1.02);
+		box-shadow: 0 40px 80px rgba(0,0,0,0.1);
+		border-color: var(--primary);
+	}
+
+	.repo-header {
+		display: flex;
+		align-items: center;
+		gap: 1.5rem;
 		margin-bottom: 2rem;
 	}
 
-	.agent-logo-container {
-		display: inline-block;
-		margin-bottom: 1.5rem;
+	.repo-icon {
+		width: 64px;
+		height: 64px;
+		background: white;
+		border-radius: 18px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+		overflow: hidden;
 	}
 
-	.agent-3d-logo {
-		width: 80px;
-		height: 80px;
-		filter: drop-shadow(0 10px 20px rgba(245, 131, 62, 0.3));
+	.favicon-img {
+		width: 32px;
+		height: 32px;
 	}
 
-	.agent-header h2 {
-		font-size: 2.25rem;
-		margin: 0;
+	.repo-title {
+		font-size: 1.4rem;
 		font-weight: 800;
-	}
-
-	.protocol-card {
-		background: rgba(255, 255, 255, 0.5);
-		padding: 1.75rem;
-		border-radius: 20px;
-		margin: 2.5rem 0;
-		border: 1px solid var(--glass-border);
-		box-shadow: var(--shadow-fluent);
-	}
-
-	.protocol-card p {
 		margin: 0;
-		font-family: 'Segoe UI Mono', 'Roboto Mono', monospace;
+	}
+
+	.repo-count {
+		font-size: 0.9rem;
 		color: var(--primary);
-		font-weight: 600;
-		font-size: 1.1rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 1px;
+	}
+
+	.repo-links {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.repo-link-btn {
+		background: rgba(0, 0, 0, 0.04);
+		color: var(--text-main);
+		padding: 1rem;
+		border-radius: 16px;
+		text-decoration: none;
+		font-weight: 700;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		gap: 0.75rem;
+		transition: all 0.2s;
 	}
 
-	.protocol-card a {
-		text-decoration: underline;
+	.repo-link-btn:hover {
+		background: var(--primary);
+		color: white;
 	}
 
-	.steps-container {
-		text-align: left;
-		max-width: 450px;
-		margin: 0 auto 3rem;
+	.repo-link-btn.secondary {
+		background: transparent;
+		border: 1px solid rgba(0,0,0,0.08);
+	}
+
+	.repo-link-btn.secondary:hover {
 		background: rgba(0,0,0,0.02);
-		padding: 2.5rem;
-		border-radius: 24px;
-	}
-
-	.steps {
-		color: var(--text-secondary);
-		line-height: 2;
-		font-size: 1.05rem;
-		margin: 0;
-	}
-
-	.steps li {
-		margin-bottom: 1rem;
-	}
-
-	.steps li::marker {
 		color: var(--primary);
-		font-weight: 800;
+		border-color: var(--primary);
 	}
 
-	.early-access {
-		color: var(--text-secondary);
-		font-size: 1rem;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-	}
-
-	.early-access a {
-		color: var(--primary);
-		font-weight: 700;
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: 5rem 0;
-		color: var(--text-secondary);
-		background: rgba(0,0,0,0.02);
-		border-radius: 24px;
-		border: 1px dashed rgba(0,0,0,0.1);
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
-	}
-
-	.empty-icon {
-		font-size: 3rem;
-		opacity: 0.3;
+	@media (max-width: 600px) {
+		.hero-title { font-size: 3rem; }
+		.grid { grid-template-columns: 1fr; }
 	}
 </style>
