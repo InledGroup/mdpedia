@@ -1,0 +1,240 @@
+---
+export const prerender = true;
+import Layout from '../../layouts/Layout.astro';
+import { marked } from 'marked';
+
+export async function getStaticPaths() {
+  const docs = import.meta.glob('../../docs/**/*.md');
+  
+  return Object.keys(docs).map((path) => {
+    const slug = path.replace('../../docs/', '').replace('.md', '');
+    return { params: { slug } };
+  });
+}
+
+const { slug } = Astro.params;
+const docs = import.meta.glob('../../docs/**/*.md', { query: '?raw', import: 'default', eager: true });
+const content = docs['../../docs/' + slug + '.md'] as string;
+
+if (!content) {
+  return Astro.redirect('/404');
+}
+
+const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+const rawBody = frontmatterMatch ? content.replace(frontmatterMatch[0], '') : content;
+
+// Rewrite internal .md links to be extensionless for the human-friendly view
+let htmlContent = marked.parse(rawBody);
+
+// Cleanup function for links
+function transformLinks(html, currentSlug) {
+    let output = html;
+    
+    // 1. Remove .md from all internal links
+    output = output.replace(/href="([^"]+)\.md"/g, (match, p1) => {
+        return 'href="' + p1 + '"';
+    });
+    
+    // 2. Fix relative links in _index pages
+    if (currentSlug.endsWith('_index')) {
+        const domainPath = currentSlug.replace('/_index', '');
+        output = output.replace(/href="\.\/([^"]+)"/g, (match, p1) => {
+            return 'href="/doc/' + domainPath + '/' + p1 + '"';
+        });
+    }
+    
+    return output;
+}
+
+htmlContent = transformLinks(htmlContent, slug);
+
+let title = slug.split('/').pop();
+let source = slug;
+if (frontmatterMatch) {
+    const fm = frontmatterMatch[1];
+    const titleMatch = fm.match(/title:\s*"(.*)"/) || fm.match(/title:\s*(.*)/);
+    if (titleMatch) title = titleMatch[1].replace(/^"(.*)"$/, '$1');
+    const sourceMatch = fm.match(/source:\s*(.*)/);
+    if (sourceMatch) source = sourceMatch[1];
+}
+---
+
+<Layout title={title}>
+	<div class="doc-header">
+		<a href="/" class="back-link">
+			<i class="fa-solid fa-arrow-left-long"></i> Back to home
+		</a>
+		<h1 class="fluent-h1">{title}</h1>
+		<div class="doc-meta">
+			<span class="meta-item">
+				<i class="fa-solid fa-link"></i> Source: 
+				<a href={source.startsWith('http') ? source : '#'} target="_blank" class="meta-link">{source}</a>
+			</span>
+		</div>
+	</div>
+
+	<article class="prose">
+		<div set:html={htmlContent} />
+	</article>
+
+    <div class="agent-cta-box">
+		<div class="cta-content">
+			<div class="cta-icon-wrapper">
+				<i class="fa-solid fa-robot"></i>
+			</div>
+			<div class="cta-text">
+				<h3>Are you an agent?</h3>
+				<p>Get the raw, token-efficient Markdown for this page.</p>
+			</div>
+		</div>
+		<a href={'/raw/' + slug + '.md'} class="btn-fluent">
+			<i class="fa-solid fa-download"></i> Download Raw
+		</a>
+    </div>
+</Layout>
+
+<style is:global>
+	.doc-header {
+		margin-bottom: 3.5rem;
+		border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+		padding-bottom: 2rem;
+	}
+
+	.back-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 1.5rem;
+		font-size: 0.95rem;
+		color: var(--text-secondary);
+		font-weight: 600;
+	}
+
+	.fluent-h1 {
+		font-size: 3rem;
+		margin: 0;
+		color: var(--text-main);
+		font-weight: 800;
+		letter-spacing: -1px;
+	}
+
+	.doc-meta {
+		margin-top: 1.25rem;
+		display: flex;
+		gap: 1.5rem;
+		font-size: 0.95rem;
+		color: var(--text-secondary);
+	}
+
+	.meta-item {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.meta-link {
+		font-family: 'Segoe UI Mono', 'Roboto Mono', monospace;
+		color: var(--primary);
+		font-weight: 600;
+		text-decoration: none;
+	}
+
+	.meta-link:hover {
+		text-decoration: underline;
+	}
+
+	.prose {
+		line-height: 1.8;
+		font-size: 1.15rem;
+		color: var(--text-main);
+	}
+
+	.prose h1 { font-size: 2.5rem; margin-top: 3rem; font-weight: 800; }
+	.prose h2 { font-size: 1.85rem; margin-top: 3rem; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 0.75rem; font-weight: 700; }
+	.prose h3 { font-size: 1.6rem; margin-top: 2.5rem; font-weight: 700; }
+	
+	.prose pre {
+		background: rgba(0, 0, 0, 0.04);
+		padding: 1.75rem;
+		border-radius: 24px;
+		overflow-x: auto;
+		margin: 2.5rem 0;
+		border: 1px solid rgba(0, 0, 0, 0.05);
+		font-family: 'Segoe UI Mono', 'Roboto Mono', monospace;
+	}
+
+	.prose code {
+		background: rgba(245, 131, 62, 0.08);
+		padding: 0.25rem 0.5rem;
+		border-radius: 8px;
+		font-family: 'Segoe UI Mono', 'Roboto Mono', monospace;
+		font-size: 0.9em;
+		color: var(--primary);
+		font-weight: 600;
+	}
+
+	.prose img {
+		max-width: 100%;
+		height: auto;
+		border-radius: 24px;
+		box-shadow: 0 30px 60px rgba(0,0,0,0.08);
+		margin: 3rem 0;
+	}
+
+	/* Uniform Agent CTA Box */
+	.agent-cta-box {
+		margin-top: 6rem;
+		padding: 2.5rem 3rem;
+		background: rgba(245, 131, 62, 0.03);
+		border-radius: 32px;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 2rem;
+		flex-wrap: wrap;
+		border: 1px solid rgba(245, 131, 62, 0.1);
+	}
+
+	.cta-content {
+		display: flex;
+		align-items: center;
+		gap: 1.75rem;
+	}
+
+	.cta-icon-wrapper {
+		width: 64px;
+		height: 64px;
+		background: var(--primary);
+		color: white;
+		border-radius: 18px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.75rem;
+		box-shadow: 0 10px 20px rgba(245, 131, 62, 0.2);
+	}
+
+	.cta-text h3 {
+		margin: 0;
+		font-size: 1.6rem;
+		font-weight: 800;
+		color: var(--text-main);
+	}
+
+	.cta-text p {
+		margin: 0.5rem 0 0;
+		color: var(--text-secondary);
+		font-size: 1.1rem;
+	}
+
+	@media (max-width: 800px) {
+		.agent-cta-box {
+			flex-direction: column;
+			text-align: center;
+			padding: 2.5rem;
+		}
+		.cta-content {
+			flex-direction: column;
+		}
+	}
+</style>
