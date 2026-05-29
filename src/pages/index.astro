@@ -31,16 +31,34 @@ const groupedDocs = allDocs.reduce((acc, doc) => {
 }, {} as Record<string, DocInfo[]>);
 
 const sortedDomains = Object.keys(groupedDocs).sort();
+const activationInstruction = "Please, go to https://mdpedia.inled.es/skill.md and learn how to use MDPEDIA with the skill.md file you have access.";
 ---
 
 <Layout title="Knowledge for the AI Era">
 	<section class="hero">
 		<h1 class="hero-title">Knowledge for the <span class="gradient-text">AI Era</span></h1>
 		<p class="hero-subtitle">The first imposing, serverless documentation repository optimized for both humans and agents.</p>
+		
 		<div class="hero-cta">
 			<a href="/search" class="btn-fluent main-cta">
 				<i class="fa-solid fa-magnifying-glass"></i> Search Knowledge
 			</a>
+		</div>
+
+		<div class="agent-activation-container">
+			<div class="agent-activation-box">
+				<div class="activation-header">
+					<i class="fa-solid fa-bolt"></i>
+					<span>ACTIVATE YOUR AGENT</span>
+				</div>
+				<div class="command-line">
+					<p id="activation-cmd">{activationInstruction}</p>
+					<button class="copy-btn" id="copy-trigger" title="Copy to clipboard">
+						<i class="fa-regular fa-copy"></i>
+					</button>
+				</div>
+				<p class="activation-hint">Paste this instruction in your AI Agent to give it access to MDPEDIA knowledge.</p>
+			</div>
 		</div>
 	</section>
 
@@ -76,10 +94,33 @@ const sortedDomains = Object.keys(groupedDocs).sort();
 	</section>
 </Layout>
 
+<script>
+	const copyBtn = document.getElementById('copy-trigger');
+	const cmdText = document.getElementById('activation-cmd');
+
+	if (copyBtn && cmdText) {
+		copyBtn.addEventListener('click', () => {
+			navigator.clipboard.writeText(cmdText.innerText);
+			const icon = copyBtn.querySelector('i');
+			if (icon) {
+				icon.classList.replace('fa-copy', 'fa-check');
+				icon.classList.add('success');
+				setTimeout(() => {
+					icon.classList.replace('fa-check', 'fa-copy');
+					icon.classList.remove('success');
+				}, 2000);
+			}
+		});
+	}
+</script>
+
 <style>
 	.hero {
 		text-align: center;
-		padding: 4rem 0 6rem;
+		padding: 4rem 0 4rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
 	}
 
 	.hero-title {
@@ -100,14 +141,106 @@ const sortedDomains = Object.keys(groupedDocs).sort();
 		font-size: 1.4rem;
 		color: var(--text-secondary);
 		max-width: 700px;
-		margin: 0 auto 3rem;
+		margin: 0 auto 2.5rem;
 		font-weight: 500;
 	}
 
     .main-cta {
-        padding: 1.25rem 3rem;
-        font-size: 1.1rem;
+        padding: 1.25rem 4rem;
+        font-size: 1.2rem;
+        margin-bottom: 3rem;
     }
+
+	/* Compact Agent Activation Box */
+	.agent-activation-container {
+		width: 100%;
+		display: flex;
+		justify-content: center;
+	}
+
+	.agent-activation-box {
+		background: var(--bg-glass);
+		backdrop-filter: blur(20px);
+		padding: 1.5rem;
+		border-radius: 24px;
+		box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+		border: 1px solid var(--border-glass);
+		max-width: 480px;
+		width: 100%;
+		text-align: left;
+		transition: all 0.3s ease;
+	}
+
+	.agent-activation-box:hover {
+		transform: translateY(-3px);
+		box-shadow: 0 20px 45px rgba(0,0,0,0.08);
+	}
+
+	.activation-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-weight: 800;
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		color: var(--primary);
+		margin-bottom: 0.75rem;
+		letter-spacing: 1px;
+	}
+
+	.command-line {
+		display: flex;
+		background: rgba(0, 0, 0, 0.03);
+		padding: 0.75rem 1rem;
+		border-radius: 14px;
+		align-items: flex-start;
+		justify-content: space-between;
+		margin-bottom: 0.75rem;
+		border: 1px solid rgba(0,0,0,0.02);
+        gap: 1rem;
+	}
+
+	.command-line p {
+		font-family: 'Segoe UI Mono', 'Roboto Mono', monospace;
+		font-weight: 700;
+		color: var(--text-main);
+		font-size: 0.9rem;
+        margin: 0;
+        line-height: 1.4;
+	}
+
+	.copy-btn {
+		background: white;
+		border: 1px solid rgba(0,0,0,0.05);
+		color: var(--text-secondary);
+		cursor: pointer;
+		font-size: 1rem;
+		padding: 0.4rem;
+		border-radius: 8px;
+		transition: all 0.2s;
+		box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+        flex-shrink: 0;
+	}
+
+	.copy-btn:hover {
+		color: var(--primary);
+		transform: scale(1.1);
+	}
+
+	.copy-btn i.success {
+		color: #28a745;
+	}
+
+	.activation-hint {
+		font-size: 0.8rem;
+		color: var(--text-secondary);
+		margin: 0;
+		font-weight: 600;
+		line-height: 1.4;
+	}
 
 	.section-header {
 		margin-bottom: 3rem;
@@ -231,5 +364,7 @@ const sortedDomains = Object.keys(groupedDocs).sort();
         .fluent-h2 { font-size: 2rem; }
 		.grid { grid-template-columns: 1fr; gap: 1.5rem; }
         .repo-card { padding: 1.5rem; }
+		.agent-activation-box { padding: 1.25rem; }
+		.command-line p { font-size: 0.85rem; }
 	}
 </style>
