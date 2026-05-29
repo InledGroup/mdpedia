@@ -6,7 +6,7 @@ on:
 
 jobs:
   index:
-    if: startsWith(github.event.issue.title, 'http')
+    if: startsWith(github.event.issue.title, 'http') || startsWith(github.event.issue.title, 'reindex ')
     runs-on: ubuntu-latest
     permissions:
       contents: write
