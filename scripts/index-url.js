@@ -13,7 +13,6 @@ async function fetchAndParse(url) {
         }
     });
     
-    // If not found and it's a directory-like URL, try adding /
     if (response.status === 404 && !url.endsWith('/')) {
         const retryUrl = url + '/';
         const retryResponse = await fetch(retryUrl, {
@@ -33,19 +32,14 @@ async function fetchAndParse(url) {
 
 function cleanTitle(title) {
     if (!title) return "";
-    let clean = title.replace(/\s*[–\-\|]\s*React\s*$/i, '');
-    clean = clean.replace(/\s*[–\-\|]\s*Astro\s*$/i, '');
-    clean = clean.replace(/\s*[–\-\|]\s*Documentation\s*$/i, '');
+    let clean = title.replace(/\s*[–\-\|]\s*(React|Astro|Vue|Vue\.js|Documentation)\s*$/i, '');
     return clean.trim();
 }
 
 async function indexSingleUrl(url, skipDomainIndex = false) {
   try {
     const urlObj = new URL(url);
-    if (urlObj.hostname.includes('wikipedia.org')) {
-      console.warn('Skipping Wikipedia for: ' + url);
-      return;
-    }
+    if (urlObj.hostname.includes('wikipedia.org')) return;
     
     console.log("Processing: " + url);
     const { html } = await fetchAndParse(url);
@@ -53,10 +47,7 @@ async function indexSingleUrl(url, skipDomainIndex = false) {
     const reader = new Readability(dom.window.document);
     const article = reader.parse();
 
-    if (!article) {
-      console.warn('Could not extract content from: ' + url);
-      return;
-    }
+    if (!article) return;
 
     const turndownService = new TurndownService({
       headingStyle: 'atx',
@@ -65,7 +56,8 @@ async function indexSingleUrl(url, skipDomainIndex = false) {
     
     const markdown = turndownService.turndown(article.content);
     const domain = urlObj.hostname;
-    const pathname = urlObj.pathname === '/' ? '/index' : urlObj.pathname;
+    let pathname = urlObj.pathname === '/' ? '/index' : urlObj.pathname;
+    if (pathname.endsWith('.html')) pathname = pathname.replace('.html', '');
     
     const targetDir = path.join('src', 'docs', domain, path.dirname(pathname));
     const fileName = path.basename(pathname) + ".md";
@@ -74,15 +66,10 @@ async function indexSingleUrl(url, skipDomainIndex = false) {
     fs.mkdirSync(targetDir, { recursive: true });
     
     const displayTitle = cleanTitle(article.title);
-    
     const content = "---\ntitle: \"" + displayTitle.replace(/"/g, '\\"') + "\"\nsource: " + url + "\nauthor: " + (article.byline || 'Unknown') + "\nexcerpt: " + (article.excerpt || '').replace(/\n/g, ' ') + "\n---\n\n# " + displayTitle + "\n\n" + markdown + "\n";
 
     fs.writeFileSync(filePath, content);
-    
-    if (!skipDomainIndex) {
-        updateDomainIndex(domain);
-    }
-    
+    if (!skipDomainIndex) updateDomainIndex(domain);
     return filePath;
   } catch (error) {
     console.error("Error indexing " + url + ":", error.message);
@@ -103,47 +90,58 @@ async function indexUrl(inputUrl) {
         const domain = new URL(baseUrl).hostname;
 
         if (onlyUpdateIndex) {
-            console.log("Updating indices for domain: " + domain);
             updateDomainIndex(domain);
             return;
         }
 
-        console.log("Wildcard detected. Exploring: " + baseUrl);
-        try {
-            const { html, url: finalBaseUrl } = await fetchAndParse(baseUrl);
-            const dom = new JSDOM(html, { url: finalBaseUrl });
-            const links = Array.from(dom.window.document.querySelectorAll('a'));
-            
-            const toIndex = links
-                .map(a => a.href)
-                .filter(href => {
-                    try {
-                        const u = new URL(href, finalBaseUrl);
-                        const isSameOrigin = u.origin === new URL(finalBaseUrl).origin;
-                        const startsWithBase = u.href.startsWith(finalBaseUrl);
-                        const isNotSelf = u.href !== finalBaseUrl && u.href !== (finalBaseUrl + '/');
-                        return isSameOrigin && startsWithBase && isNotSelf;
-                    } catch { return false; }
-                })
-                .filter((v, i, a) => a.indexOf(v) === i);
+        console.log("Deep Wildcard detected. Exploring: " + baseUrl);
+        const visited = new Set();
+        const toProcess = [baseUrl];
+        const results = new Set();
 
-            console.log("Found " + toIndex.length + " links to process.");
-            for (const link of toIndex) {
-                await indexSingleUrl(link, true);
+        while (toProcess.length > 0) {
+            const current = toProcess.shift();
+            if (visited.has(current)) continue;
+            visited.add(current);
+
+            try {
+                const { html, url: finalUrl } = await fetchAndParse(current);
+                const dom = new JSDOM(html, { url: finalUrl });
+                const links = Array.from(dom.window.document.querySelectorAll('a'));
+                
+                for (const a of links) {
+                    try {
+                        const u = new URL(a.href, finalUrl);
+                        u.hash = ''; // Remove anchors
+                        const href = u.href.replace(/\/$/, '');
+                        const cleanBase = baseUrl.replace(/\/$/, '');
+
+                        if (u.origin === new URL(baseUrl).origin && href.startsWith(cleanBase)) {
+                            if (!visited.has(href)) {
+                                // If it looks like a page (not just an anchor), add to results
+                                results.add(href);
+                                // If it doesn't have an extension or is .html, we might want to explore it for more links
+                                if (!path.extname(u.pathname) || u.pathname.endsWith('.html')) {
+                                    toProcess.push(href);
+                                }
+                            }
+                        }
+                    } catch (e) {}
+                }
+            } catch (error) {
+                console.error("Error crawling " + current + ": " + error.message);
             }
-            updateDomainIndex(domain);
-        } catch (error) {
-            console.error("Error exploring wildcard: " + error.message);
-            process.exit(1);
         }
+
+        console.log("Found " + results.size + " unique pages to process.");
+        for (const link of Array.from(results)) {
+            await indexSingleUrl(link, true);
+        }
+        updateDomainIndex(domain);
     } else {
         const urlObj = new URL(url);
-        const domain = urlObj.hostname;
-        if (onlyUpdateIndex) {
-            updateDomainIndex(domain);
-        } else {
-            await indexSingleUrl(url);
-        }
+        if (onlyUpdateIndex) updateDomainIndex(urlObj.hostname);
+        else await indexSingleUrl(url);
     }
 }
 
@@ -166,14 +164,10 @@ function updateDomainIndex(domain) {
                 const webRelativePath = relativePath.split(path.sep).join('/').replace(/\.md$/, '');
                 
                 let title = titleMatch ? titleMatch[1].trim() : file;
-                if (title.toLowerCase() === "react" || title.toLowerCase() === "astro" || title.length < 2) {
+                if (title.toLowerCase() === "react" || title.toLowerCase() === "astro" || title.toLowerCase() === "vue" || title.length < 2) {
                     title = webRelativePath.split('/').pop().replace(/[\-_]/g, ' ');
                 }
-
-                files.push({
-                    title: title,
-                    path: webRelativePath
-                });
+                files.push({ title, path: webRelativePath });
             }
         });
     }
@@ -207,7 +201,6 @@ function updateDomainIndex(domain) {
         
         indexContent += "\n---\n*Generated by MDPEDIA — Knowledge for the AI Era*\n";
         fs.writeFileSync(path.join(domainDir, '_index.md'), indexContent);
-        console.log("Domain index updated for " + domain);
         patchFilesWithIndexInstruction(domain, domainDir);
     }
 }
@@ -224,7 +217,6 @@ function patchFilesWithIndexInstruction(domain, domainDir) {
                 let content = fs.readFileSync(fullPath, 'utf-8');
                 const finalPath = "/doc/" + domain + "/_index";
                 const instruction = "> 💡 **Tip**: Explore all indexed documents for **" + domain + "** in the [Domain Index](" + finalPath + ").";
-                
                 if (content.indexOf('[Domain Index]') === -1) {
                     const fmEndIndex = content.indexOf('---', 4);
                     if (fmEndIndex !== -1) {
@@ -240,9 +232,5 @@ function patchFilesWithIndexInstruction(domain, domainDir) {
 }
 
 const url = process.argv[2];
-if (!url) {
-  console.error('Usage: node index-url.js <URL>');
-  process.exit(1);
-}
-
+if (!url) process.exit(1);
 indexUrl(url);
