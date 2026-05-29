@@ -7,11 +7,25 @@ import TurndownService from 'turndown';
 async function fetchAndParse(url) {
     const response = await fetch(url, {
         headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9'
         }
     });
+    
+    // If not found and it's a directory-like URL, try adding /
+    if (response.status === 404 && !url.endsWith('/')) {
+        const retryUrl = url + '/';
+        const retryResponse = await fetch(retryUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        });
+        if (retryResponse.ok) return { html: await retryResponse.text(), url: retryResponse.url };
+    }
+
     if (!response.ok) {
-        throw new Error("Failed to fetch " + url + ": " + response.statusText);
+        throw new Error("Failed to fetch " + url + ": " + response.status + " " + response.statusText);
     }
     const html = await response.text();
     return { html, url: response.url };
@@ -20,6 +34,7 @@ async function fetchAndParse(url) {
 function cleanTitle(title) {
     if (!title) return "";
     let clean = title.replace(/\s*[–\-\|]\s*React\s*$/i, '');
+    clean = clean.replace(/\s*[–\-\|]\s*Astro\s*$/i, '');
     clean = clean.replace(/\s*[–\-\|]\s*Documentation\s*$/i, '');
     return clean.trim();
 }
@@ -85,7 +100,6 @@ async function indexUrl(inputUrl) {
 
     if (url.endsWith('*')) {
         let baseUrl = url.slice(0, -1);
-        if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
         const domain = new URL(baseUrl).hostname;
 
         if (onlyUpdateIndex) {
@@ -96,18 +110,18 @@ async function indexUrl(inputUrl) {
 
         console.log("Wildcard detected. Exploring: " + baseUrl);
         try {
-            const { html } = await fetchAndParse(baseUrl);
-            const dom = new JSDOM(html, { url: baseUrl });
+            const { html, url: finalBaseUrl } = await fetchAndParse(baseUrl);
+            const dom = new JSDOM(html, { url: finalBaseUrl });
             const links = Array.from(dom.window.document.querySelectorAll('a'));
             
             const toIndex = links
                 .map(a => a.href)
                 .filter(href => {
                     try {
-                        const u = new URL(href, baseUrl);
-                        const isSameOrigin = u.origin === new URL(baseUrl).origin;
-                        const startsWithBase = u.href.startsWith(baseUrl);
-                        const isNotSelf = u.href !== baseUrl && u.href !== (baseUrl + '/');
+                        const u = new URL(href, finalBaseUrl);
+                        const isSameOrigin = u.origin === new URL(finalBaseUrl).origin;
+                        const startsWithBase = u.href.startsWith(finalBaseUrl);
+                        const isNotSelf = u.href !== finalBaseUrl && u.href !== (finalBaseUrl + '/');
                         return isSameOrigin && startsWithBase && isNotSelf;
                     } catch { return false; }
                 })
@@ -152,7 +166,7 @@ function updateDomainIndex(domain) {
                 const webRelativePath = relativePath.split(path.sep).join('/').replace(/\.md$/, '');
                 
                 let title = titleMatch ? titleMatch[1].trim() : file;
-                if (title.toLowerCase() === "react" || title.length < 2) {
+                if (title.toLowerCase() === "react" || title.toLowerCase() === "astro" || title.length < 2) {
                     title = webRelativePath.split('/').pop().replace(/[\-_]/g, ' ');
                 }
 
@@ -186,7 +200,6 @@ function updateDomainIndex(domain) {
                 indexContent += "### 📁 " + folder.charAt(0).toUpperCase() + folder.slice(1) + "\n";
             }
             structure[folder].sort((a,b) => a.title.localeCompare(b.title)).forEach(f => {
-                // FORCE ABSOLUTE PATH FROM /doc/ TO AVOID SUBDIRECTORY NESTING ISSUES
                 indexContent += "- [" + f.title + "](/doc/" + domain + "/" + f.path + ")\n";
             });
             indexContent += "\n";
@@ -209,7 +222,6 @@ function patchFilesWithIndexInstruction(domain, domainDir) {
                 walk(fullPath);
             } else if (file.endsWith('.md') && file !== '_index.md') {
                 let content = fs.readFileSync(fullPath, 'utf-8');
-                // Use absolute path for index instruction to avoid relative link hell
                 const finalPath = "/doc/" + domain + "/_index";
                 const instruction = "> 💡 **Tip**: Explore all indexed documents for **" + domain + "** in the [Domain Index](" + finalPath + ").";
                 
