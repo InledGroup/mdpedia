@@ -141,6 +141,87 @@ const githubIssueUrl = REPO_URL + "/issues/new?title=" + encodeURIComponent(gith
 		gap: 3rem;
 	}
 
+    /* Reuse Grid Styles */
+	.card-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+		gap: 1.5rem;
+	}
+
+	.doc-card {
+		background: rgba(255, 255, 255, 0.6);
+		padding: 1.5rem;
+		border-radius: 20px;
+		border: 1px solid rgba(0, 0, 0, 0.05);
+		text-decoration: none;
+		display: flex;
+		align-items: center;
+		gap: 1.25rem;
+		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+	}
+
+	.doc-card:hover {
+		transform: translateY(-6px);
+		box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+		border-color: var(--primary);
+		background: white;
+	}
+
+	.card-icon {
+		width: 48px;
+		height: 48px;
+		background: rgba(245, 131, 62, 0.1);
+		border-radius: 12px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--primary);
+		font-size: 1.25rem;
+	}
+
+	.card-content {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		overflow: hidden;
+	}
+
+	.doc-title {
+		font-weight: 700;
+		font-size: 1.1rem;
+		color: var(--text-main);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.doc-slug {
+		font-size: 0.8rem;
+		color: var(--text-secondary);
+		font-family: 'Segoe UI Mono', 'Roboto Mono', monospace;
+		word-break: break-all;
+		opacity: 0.7;
+	}
+
+	.empty-state {
+		text-align: center;
+		padding: 4rem 0;
+		color: var(--text-secondary);
+		background: rgba(0,0,0,0.02);
+		border-radius: 24px;
+		border: 1px dashed rgba(0,0,0,0.1);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.empty-icon {
+		font-size: 3rem;
+		opacity: 0.3;
+	}
+
 	.index-request-card {
 		background: rgba(255, 255, 255, 0.5);
 		padding: 3rem;

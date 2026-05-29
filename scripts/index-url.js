@@ -124,7 +124,7 @@ function updateDomainIndex(domain) {
                 const content = fs.readFileSync(fullPath, 'utf-8');
                 const titleMatch = content.match(/title:\s*(.*)/);
                 const relativePath = path.relative(domainDir, fullPath);
-                const webRelativePath = relativePath.split(path.sep).join('/');
+                const webRelativePath = relativePath.split(path.sep).join('/').replace(/\.md$/, '');
                 files.push({
                     title: titleMatch ? titleMatch[1].trim() : file,
                     path: "./" + webRelativePath
@@ -160,7 +160,7 @@ function patchFilesWithIndexInstruction(domain, domainDir) {
                 let content = fs.readFileSync(fullPath, 'utf-8');
                 
                 const relativeDir = path.relative(path.dirname(fullPath), domainDir);
-                const indexPath = path.join(relativeDir, '_index.md').split(path.sep).join('/');
+                const indexPath = path.join(relativeDir, '_index.md').split(path.sep).join('/').replace(/\.md$/, '');
                 const finalPath = indexPath.startsWith('.') ? indexPath : "./" + indexPath;
                 const instruction = "> 💡 **Tip**: Explore all indexed documents for **" + domain + "** in the [Domain Index](" + finalPath + ").";
                 

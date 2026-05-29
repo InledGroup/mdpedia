@@ -5,7 +5,7 @@ author: Unknown
 excerpt: Astro is the web framework for building content-driven websites like blogs, marketing, and e-commerce. Learn why Astro might be a good choice for your next website.
 ---
 
-> 💡 **Tip**: Explore all indexed documents for **docs.astro.build** in the [Domain Index](../../_index.md).
+> 💡 **Tip**: Explore all indexed documents for **docs.astro.build** in the [Domain Index](../../_index).
 
 ---
 

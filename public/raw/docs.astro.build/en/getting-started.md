@@ -5,7 +5,7 @@ author: Unknown
 excerpt: Guides, resources, and API references to help you build with Astro — the web framework for content-driven websites.
 ---
 
-> 💡 **Tip**: Explore all indexed documents for **docs.astro.build** in the [Domain Index](../_index.md).
+> 💡 **Tip**: Explore all indexed documents for **docs.astro.build** in the [Domain Index](../_index).
 
 ---
 
