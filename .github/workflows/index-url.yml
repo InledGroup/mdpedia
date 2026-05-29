@@ -45,16 +45,32 @@ jobs:
             const issue_number = context.issue.number;
             const user = context.payload.issue.user.login;
             const url = context.payload.issue.title;
-            const urlObj = new URL(url);
-            const domain = urlObj.hostname;
-            const pathname = urlObj.pathname === '/' ? '/index' : urlObj.pathname;
-            const publicPath = `raw/${domain}${pathname}.md`;
-            const docPath = `doc/${domain}${pathname}`;
+            const isWildcard = url.endsWith('*');
             
-            const body = `¡Hola @${user}! Indexación completada con éxito. 🚀\n\n` +
-                         `- 📖 **Vista Humana**: [${docPath}](https://inledgroup.github.io/mdpedia/${docPath})\n` +
-                         `- 🤖 **Raw para Agentes**: https://inledgroup.github.io/mdpedia/${publicPath}\n\n` +
-                         `*Nota: Puede tardar un par de minutos en estar disponible mientras se despliega la nueva versión.*`;
+            let body = `¡Hola @${user}! Indexación completada con éxito. 🚀\n\n`;
+            
+            if (isWildcard) {
+                const baseUrl = url.slice(0, -1);
+                const urlObj = new URL(baseUrl);
+                const domain = urlObj.hostname;
+                const pathname = urlObj.pathname === '/' ? '' : urlObj.pathname;
+                const indexPath = `doc/${domain}${pathname}/_index`;
+                
+                body += `Has solicitado una indexación masiva del directorio **${baseUrl}**.\n\n` +
+                        `- 📚 **Índice del Dominio**: [${indexPath}](https://inledgroup.github.io/mdpedia/${indexPath})\n` +
+                        `- 🔍 Puedes buscar términos específicos de este dominio en el buscador principal.\n\n`;
+            } else {
+                const urlObj = new URL(url);
+                const domain = urlObj.hostname;
+                const pathname = urlObj.pathname === '/' ? '/index' : urlObj.pathname;
+                const publicPath = `raw/${domain}${pathname}.md`;
+                const docPath = `doc/${domain}${pathname}`;
+                
+                body += `- 📖 **Vista Humana**: [${docPath}](https://inledgroup.github.io/mdpedia/${docPath})\n` +
+                        `- 🤖 **Raw para Agentes**: https://inledgroup.github.io/mdpedia/${publicPath}\n\n`;
+            }
+            
+            body += `*Nota: Puede tardar un par de minutos en estar disponible mientras se despliega la nueva versión.*`;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,

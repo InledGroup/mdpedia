@@ -4,26 +4,32 @@ import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
 import TurndownService from 'turndown';
 
-async function indexUrl(url) {
+async function fetchAndParse(url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error("Failed to fetch " + url + ": " + response.statusText);
+    }
+    const html = await response.text();
+    return { html, url: response.url };
+}
+
+async function indexSingleUrl(url, skipDomainIndex = false) {
   try {
     const urlObj = new URL(url);
     if (urlObj.hostname.includes('wikipedia.org')) {
-      throw new Error('Scraping Wikipedia is not allowed to prevent excessive load.');
+      console.warn('Skipping Wikipedia for: ' + url);
+      return;
     }
     
-    console.log("Indexing URL: " + url);
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error("Failed to fetch " + url + ": " + response.statusText);
-    }
-    const html = await response.text();
-
+    console.log("Processing: " + url);
+    const { html } = await fetchAndParse(url);
     const dom = new JSDOM(html, { url });
     const reader = new Readability(dom.window.document);
     const article = reader.parse();
 
     if (!article) {
-      throw new Error('Failed to extract content from the page.');
+      console.warn('Could not extract content from: ' + url);
+      return;
     }
 
     const turndownService = new TurndownService({
@@ -32,7 +38,6 @@ async function indexUrl(url) {
     });
     
     const markdown = turndownService.turndown(article.content);
-
     const domain = urlObj.hostname;
     const pathname = urlObj.pathname === '/' ? '/index' : urlObj.pathname;
     
@@ -45,19 +50,58 @@ async function indexUrl(url) {
     const content = "---\ntitle: " + article.title + "\nsource: " + url + "\nauthor: " + (article.byline || 'Unknown') + "\nexcerpt: " + (article.excerpt || '') + "\n---\n\n# " + article.title + "\n\n" + markdown + "\n";
 
     fs.writeFileSync(filePath, content);
-    console.log("Successfully indexed to: " + filePath);
     
-    updateDomainIndex(domain);
+    if (!skipDomainIndex) {
+        updateDomainIndex(domain);
+    }
     
     return filePath;
   } catch (error) {
     console.error("Error indexing " + url + ":", error.message);
-    process.exit(1);
   }
+}
+
+async function indexUrl(inputUrl) {
+    if (inputUrl.endsWith('*')) {
+        const baseUrl = inputUrl.slice(0, -1);
+        console.log("Wildcard detected. Exploring directory: " + baseUrl);
+        
+        try {
+            const { html } = await fetchAndParse(baseUrl);
+            const dom = new JSDOM(html, { url: baseUrl });
+            const links = Array.from(dom.window.document.querySelectorAll('a'));
+            
+            const toIndex = links
+                .map(a => a.href)
+                .filter(href => {
+                    try {
+                        const u = new URL(href, baseUrl);
+                        return u.origin === new URL(baseUrl).origin && u.href.startsWith(baseUrl) && u.href !== baseUrl;
+                    } catch { return false; }
+                })
+                .filter((v, i, a) => a.indexOf(v) === i); // Unique
+
+            console.log("Found " + toIndex.length + " links to index.");
+            
+            for (const link of toIndex) {
+                await indexSingleUrl(link, true);
+            }
+            
+            const domain = new URL(baseUrl).hostname;
+            updateDomainIndex(domain);
+            
+        } catch (error) {
+            console.error("Error exploring wildcard URL: " + error.message);
+            process.exit(1);
+        }
+    } else {
+        await indexSingleUrl(inputUrl);
+    }
 }
 
 function updateDomainIndex(domain) {
     const domainDir = path.join('src', 'docs', domain);
+    if (!fs.existsSync(domainDir)) return;
     const files = [];
     
     function walk(dir) {
@@ -91,7 +135,6 @@ function updateDomainIndex(domain) {
         
         fs.writeFileSync(path.join(domainDir, '_index.md'), indexContent);
         console.log("Domain index updated for " + domain);
-
         patchFilesWithIndexInstruction(domain, domainDir);
     }
 }
