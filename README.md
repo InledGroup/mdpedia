@@ -60,5 +60,5 @@ Indexing is completely automated via GitHub Issues:
 ---
 
 <p align="center">
-  <sub>Built by <strong>InledGroup</strong> — Optimizing the world's knowledge for the next generation of intelligence.</sub>
+  <sub>Built by <strong>InledLabs</strong> — Optimizing the world's knowledge for the next generation of intelligence.</sub>
 </p>

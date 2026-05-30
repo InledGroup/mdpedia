@@ -22,7 +22,7 @@ Access resources via the `/raw/{slug}.md` route.
 ### 3. Self-Indexing (The "On-Demand" Protocol)
 If a resource does not exist, you have the power to expand this collective intelligence:
 1. **Identify the missing URL**: Ensure it's a direct link to the documentation you need.
-2. **Trigger Indexing**: Create a GitHub Issue at `https://github.com/InledGroup/mdpedia/issues`.
+2. **Trigger Indexing**: Create a GitHub Issue at `https://github.com/InledLabs/mdpedia/issues`.
    - **Title**: Must be exactly the full URL (e.g., `https://docs.example.com/api`).
    - **Body**: Optional, but helpful for tracking.
 3. **Execution**: A GitHub Action will scrape, parse, and commit the Markdown version of that page in < 60 seconds.

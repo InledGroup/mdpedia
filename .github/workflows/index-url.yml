@@ -61,7 +61,7 @@ jobs:
                 const indexPath = "doc/" + domain + pathname + "/_index";
                 
                 body += "Se han procesado los índices para el dominio **" + domain + "**.\n\n" +
-                        "- 📚 **Índice del Dominio**: [" + indexPath + "](https://inledgroup.github.io/mdpedia/" + indexPath + ")\n";
+                        "- 📚 **Índice del Dominio**: [" + indexPath + "](https://inledlabs.github.io/mdpedia/" + indexPath + ")\n";
             } else {
                 const urlObj = new URL(url);
                 const domain = urlObj.hostname;
@@ -69,8 +69,8 @@ jobs:
                 const publicPath = "raw/" + domain + pathname + ".md";
                 const docPath = "doc/" + domain + pathname;
                 
-                body += "- 📖 **Vista Humana**: [" + docPath + "](https://inledgroup.github.io/mdpedia/" + docPath + ")\n" +
-                        "- 🤖 **Raw para Agentes**: https://inledgroup.github.io/mdpedia/" + publicPath + "\n\n";
+                body += "- 📖 **Vista Humana**: [" + docPath + "](https://inledlabs.github.io/mdpedia/" + docPath + ")\n" +
+                        "- 🤖 **Raw para Agentes**: https://inledlabs.github.io/mdpedia/" + publicPath + "\n\n";
             }
             
             body += "*Nota: Puede tardar un par de minutos en estar disponible mientras se despliega la nueva versión.*";
