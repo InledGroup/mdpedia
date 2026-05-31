@@ -1,6 +1,7 @@
 ---
 title: "GNOME Shell Extensions Review Guidelines"
 source: https://gjs.guide/extensions/review-guidelines/review-guidelines.html
+requester: jaimegh-es
 author: Unknown
 excerpt: A Guide To GNOME JavaScript!
 ---
@@ -563,3 +564,7 @@ There are several ways for you to get help with your extension.
 *   Ask in the extensions [Matrix](https://matrix.to/#/#extensions:gnome.org) room
 *   Ask on [discourse.gnome.org](https://discourse.gnome.org/) using the [extensions tag](https://discourse.gnome.org/tag/extensions)
 *   Ask on StackOverflow using the [gnome-shell-extensions](https://stackoverflow.com/questions/tagged/gnome-shell-extensions) and/or [gjs](https://stackoverflow.com/questions/tagged/gjs) tags
+
+---
+
+> ⚖️ **Aviso Legal**: Este contenido ha sido indexado a petición del usuario de GitHub [@jaimegh-es](https://github.com/jaimegh-es). MDPEDIA es un servicio de indexación automática y no asume responsabilidad por el contenido solicitado por terceros. Para solicitudes de retirada (DMCA) o reclamaciones, contacta con hi@inled.es.
