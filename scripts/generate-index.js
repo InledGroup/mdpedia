@@ -13,10 +13,6 @@ function getMarkdownFiles(dir, fileList = []) {
       const slug = relativePath.replace(/\.md$/, '');
       const content = fs.readFileSync(filePath, 'utf-8');
       const titleMatch = content.match(/title:\s*(.*)/);
-      
-      const publicPath = path.join(process.cwd(), 'public', 'raw', relativePath);
-      fs.mkdirSync(path.dirname(publicPath), { recursive: true });
-      fs.copyFileSync(filePath, publicPath);
 
       fileList.push({
         slug: slug.split(path.sep).join('/'),
