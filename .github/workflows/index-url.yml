@@ -37,7 +37,7 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Index update: ${{ github.event.issue.title }}"
-          file_pattern: "src/docs/** public/raw/** src/data/search-index.json"
+          file_pattern: "src/docs/** src/data/search-index.json"
           add_options: "--force"
 
       - name: Comment and close issue
@@ -49,6 +49,7 @@ jobs:
             const url = context.payload.issue.title;
             const isWildcard = url.endsWith('*');
             const isReindex = url.startsWith('reindex ');
+            const origin = "https://mdpedia.inled.es";
             
             let body = "¡Hola @" + user + "! ";
             body += isReindex ? "Actualización de índices completada. 🛠️\n\n" : "Indexación completada con éxito. 🚀\n\n";
@@ -59,18 +60,20 @@ jobs:
                 const domain = urlObj.hostname;
                 const pathname = urlObj.pathname === '/' ? '' : urlObj.pathname;
                 const indexPath = "doc/" + domain + pathname + "/_index";
+                const rawPath = "raw/" + domain + pathname + "/_index.md";
                 
                 body += "Se han procesado los índices para el dominio **" + domain + "**.\n\n" +
-                        "- 📚 **Índice del Dominio**: [" + indexPath + "](https://inledlabs.github.io/mdpedia/" + indexPath + ")\n";
+                        "- 📚 **Índice del Dominio**: [" + indexPath + "](" + origin + "/" + indexPath + ")\n" +
+                        "- 🤖 **Índice Raw para IA**: " + origin + "/" + rawPath + "\n";
             } else {
                 const urlObj = new URL(url);
                 const domain = urlObj.hostname;
                 const pathname = urlObj.pathname === '/' ? '/index' : urlObj.pathname;
-                const publicPath = "raw/" + domain + pathname + ".md";
+                const rawPath = "raw/" + domain + pathname + ".md";
                 const docPath = "doc/" + domain + pathname;
                 
-                body += "- 📖 **Vista Humana**: [" + docPath + "](https://inledlabs.github.io/mdpedia/" + docPath + ")\n" +
-                        "- 🤖 **Raw para Agentes**: https://inledlabs.github.io/mdpedia/" + publicPath + "\n\n";
+                body += "- 📖 **Vista Humana**: [" + docPath + "](" + origin + "/" + docPath + ")\n" +
+                        "- 🤖 **Raw para Agentes**: " + origin + "/" + rawPath + "\n\n";
             }
             
             body += "*Nota: Puede tardar un par de minutos en estar disponible mientras se despliega la nueva versión.*";
