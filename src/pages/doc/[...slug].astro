@@ -1,5 +1,3 @@
----
-export const prerender = true;
 import Layout from '../../layouts/Layout.astro';
 import { marked } from 'marked';
 
@@ -18,6 +16,23 @@ const content = docs['../../docs/' + slug + '.md'] as string;
 
 if (!content) {
   return Astro.redirect('/404');
+}
+
+const acceptHeader = Astro.request.headers.get('accept') || '';
+const userAgent = Astro.request.headers.get('user-agent') ? Astro.request.headers.get('user-agent').toLowerCase() : '';
+
+const isMarkdownRequested = acceptHeader.includes('text/markdown') || 
+(userAgent.includes('curl') || userAgent.includes('fetch') || userAgent.includes('agent') || userAgent.includes('bot'));
+
+if (isMarkdownRequested) {
+    const origin = Astro.url.origin;
+    let aiContent = content;
+    // Transform /doc/ links to absolute /raw/ links with .md for the AI
+    aiContent = aiContent.replace(/\/doc\/([^\s\)]+)/g, `${origin}/raw/$1.md`);
+    
+    return new Response(aiContent, {
+        headers: { 'Content-Type': 'text/markdown' }
+    });
 }
 
 const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
@@ -117,6 +132,7 @@ if (frontmatterMatch) {
                 font-size: 0.95rem;
                 color: var(--text-secondary);
                 font-weight: 600;
+                letter-spacing: -0.2px;
         }
 
         .fluent-h1 {

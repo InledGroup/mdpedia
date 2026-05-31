@@ -19,6 +19,19 @@ if (q) {
       item.slug.toLowerCase().includes(searchQ) || 
       item.title.toLowerCase().includes(searchQ)
     );
+
+    // Fallback: search by words if no results
+    if (results.length === 0) {
+      const words = searchQ.split(/\s+/).filter(w => w.length > 2);
+      if (words.length > 0) {
+        results = indexedFiles.filter(item => {
+          return words.some(word => 
+            item.slug.toLowerCase().includes(word) || 
+            item.title.toLowerCase().includes(word)
+          );
+        });
+      }
+    }
   }
 }
 

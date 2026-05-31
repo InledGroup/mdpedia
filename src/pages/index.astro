@@ -34,6 +34,27 @@ const groupedDocs = allDocs.reduce(
 );
 
 const sortedDomains = Object.keys(groupedDocs).sort();
+
+const acceptHeader = Astro.request.headers.get('accept') || '';
+const userAgent = Astro.request.headers.get('user-agent') ? Astro.request.headers.get('user-agent').toLowerCase() : '';
+
+const isMarkdownRequested = acceptHeader.includes('text/markdown') || 
+(userAgent.includes('curl') || userAgent.includes('fetch') || userAgent.includes('agent') || userAgent.includes('bot'));
+
+if (isMarkdownRequested) {
+    const origin = Astro.url.origin;
+    let md = "# MDPEDIA - Knowledge for the AI Era\n\n";
+    md += "Welcome to MDPEDIA. Use the following index to explore documentation domains.\n\n";
+    sortedDomains.forEach(domain => {
+        md += `- [${domain} Index](${origin}/raw/${domain}/_index.md)\n`;
+    });
+    md += "\n---\n*Explore more at https://mdpedia.inled.es*";
+    
+    return new Response(md, {
+        headers: { 'Content-Type': 'text/markdown' }
+    });
+}
+
 const activationInstruction =
     "Please, go to https://mdpedia.inled.es/skill.md and learn how to use MDPEDIA with the skill.md file you have access.";
 ---
